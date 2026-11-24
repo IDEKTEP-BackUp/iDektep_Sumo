@@ -1,0 +1,379 @@
+<!doctype html>
+<!-- Sumo Pad: หน้าเว็บจอยสำหรับเปิดในเบราว์เซอร์มือถือ ไม่ใช่โค้ด Arduino ห้ามวางใน Arduino IDE -->
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Sumo Pad</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kanit:wght@500;600&family=Orbitron:wght@600;700&family=Sarabun:wght@400;600&display=swap">
+<style>
+/* Controller in the shape of a white gamepad with a black glass panel. Joystick rings glow while connected. */
+:root {
+  --shell: #f1f2f0; --shell-edge: #d9dbd8; --panel: #121314; --panel-2: #1d1f21; --ink: #f4f5f2; --dim: #8d939a;
+  --x: #22c37a; --y: #9a5cf0; --a: #ef3b3b; --b: #2f7ff0; --ring-a: #3aa0ff; --ring-b: #c157ff;
+  --display: "Kanit", "Sarabun", system-ui, sans-serif; --body: "Sarabun", system-ui, sans-serif;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+input { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+button { touch-action: none; -webkit-appearance: none; appearance: none; cursor: pointer; }
+html, body { height: 100%; margin: 0; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.touch-dot { position: fixed; z-index: 9; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; border: 2px solid #ff3a22; background: #ff3a2233; pointer-events: none; font: 600 10px/1 var(--body); color: #c11; display: grid; place-items: center; }
+body { background: #cfd3d6; color: var(--ink); font: 15px/1.4 var(--body); display: grid; place-items: center; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+  padding: env(safe-area-inset-top, 0) max(12px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0) max(12px, env(safe-area-inset-left, 0px)); }
+.pad { position: relative; width: min(100%, 860px); aspect-ratio: 2.1 / 1; max-height: 96vh; background: radial-gradient(120% 90% at 50% 0%, #fff, var(--shell) 55%, var(--shell-edge)); border-radius: 42px 42px 120px 120px / 42px 42px 90px 90px; box-shadow: 0 18px 40px #0003, inset 0 -6px 0 #0000000f; }
+.panel { position: absolute; left: 7%; right: 7%; top: 7%; height: 46%; background: linear-gradient(180deg, var(--panel-2), var(--panel)); border-radius: 26px; box-shadow: inset 0 1px 0 #ffffff1a; }
+.status { position: absolute; left: 50%; top: 56%; transform: translateX(-50%); width: 40%; text-align: center; font: 500 12px/1.3 var(--display); color: #6f757b; }
+.status b { color: #1d2023; font-weight: 600; }
+.small { position: absolute; display: grid; grid-template-columns: repeat(4, auto); gap: 6px; left: 50%; top: 44%; transform: translateX(-50%); }
+.small button { width: clamp(46px, 7vw, 64px); height: 20px; border-radius: 10px; border: 0; background: #2b2e31; color: var(--dim); font: 600 10px/20px var(--body); box-shadow: inset 0 1px 0 #ffffff14; }
+.small button.on { color: var(--ink); background: #3a3f44; }
+.leds { position: absolute; left: 50%; top: 78%; transform: translateX(-50%); display: flex; gap: 8px; }
+.leds i { width: 16px; height: 4px; border-radius: 2px; background: #3a3d40; }
+.leds i.on { background: #fff; box-shadow: 0 0 6px #fff; }
+.stick { position: absolute; width: 23%; aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; touch-action: none; }
+.stick::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(var(--ring-a), var(--ring-b), #ff5bd0, var(--ring-a)); opacity: 0.35; transition: opacity .3s; }
+.connected .stick::before { opacity: 1; filter: drop-shadow(0 0 8px var(--ring-a)); }
+.stick .well { position: absolute; inset: 9%; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #2a2c2f, #0c0d0e); }
+.stick .knob { position: relative; width: 52%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #3b3e42, #121314 70%); box-shadow: 0 4px 10px #000a, inset 0 2px 0 #ffffff12; will-change: transform; }
+.stick .knob::after { content: ""; position: absolute; inset: 18%; border-radius: 50%; border: 2px solid #ffffff0f; }
+#stickL { left: 9.5%; top: 11%; }
+#stickR { left: 59%; top: 55%; width: 19%; }
+.dpad { position: absolute; left: 21%; top: 59%; width: 15%; aspect-ratio: 1; }
+.dpad button { position: absolute; width: 34%; height: 34%; border: 0; background: #151617; box-shadow: inset 0 2px 0 #ffffff12, 0 3px 6px #0005; }
+.dpad [data-d="up"] { left: 33%; top: 0; border-radius: 8px 8px 2px 2px; }
+.dpad [data-d="down"] { left: 33%; bottom: 0; border-radius: 2px 2px 8px 8px; }
+.dpad [data-d="left"] { left: 0; top: 33%; border-radius: 8px 2px 2px 8px; }
+.dpad [data-d="right"] { right: 0; top: 33%; border-radius: 2px 8px 8px 2px; }
+.dpad::after { content: ""; position: absolute; left: 33%; top: 33%; width: 34%; height: 34%; background: #151617; }
+.face { position: absolute; right: 9%; top: 9%; width: 18%; aspect-ratio: 1; }
+.face button { position: absolute; width: 36%; aspect-ratio: 1; border-radius: 50%; border: 0; background: radial-gradient(circle at 50% 35%, #2c2e31, #0f1011); font: 600 clamp(14px, 2.6vw, 22px)/1 var(--display); box-shadow: 0 3px 8px #0008; }
+.face [data-k="X"] { left: 32%; top: 0; color: var(--x); box-shadow: 0 0 0 2px #22c37a55, 0 3px 8px #0008; }
+.face [data-k="Y"] { left: 0; top: 32%; color: var(--y); box-shadow: 0 0 0 2px #9a5cf055, 0 3px 8px #0008; }
+.face [data-k="A"] { right: 0; top: 32%; color: var(--a); box-shadow: 0 0 0 2px #ef3b3b55, 0 3px 8px #0008; }
+.face [data-k="B"] { left: 32%; bottom: 0; color: var(--b); box-shadow: 0 0 0 2px #2f7ff055, 0 3px 8px #0008; }
+.face button.down, .dpad button.down, .tbtn.down, .small button:active { transform: translateY(2px) scale(.96); filter: brightness(1.4); }
+.tbtn { position: absolute; left: 50%; top: 66%; transform: translateX(-50%); width: 7%; aspect-ratio: 1.4; border-radius: 8px; border: 1.5px solid #8b9095; background: var(--shell); color: #6b7076; font: 600 14px/1 var(--display); }
+/* Round digital gauge in the style of a car instrument: gloss bezel, LCD face, blue segments, red warning lamp. */
+.gauge { position: absolute; left: 50%; top: 9.5%; transform: translateX(-50%); width: 15.5%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(circle at 35% 25%, #4a4e53 0%, #15171a 38%, #050607 70%); box-shadow: 0 6px 14px #000c, inset 0 2px 1px #ffffff26, inset 0 -3px 6px #000; container-type: inline-size; }
+.gauge::before { content: ""; position: absolute; inset: 7%; border-radius: 50%; background: radial-gradient(circle at 50% 30%, #0b1018, #020305 75%); box-shadow: inset 0 0 0 1.5px #000, inset 0 4px 10px #000; }
+.gauge::after { content: ""; position: absolute; inset: 7%; border-radius: 50%; background: linear-gradient(160deg, #ffffff18 0%, #ffffff05 35%, transparent 50%); pointer-events: none; }
+.g-brand { position: absolute; top: 20%; left: 0; right: 0; text-align: center; font: italic 600 9cqw/1 var(--body); color: #3d8fff; letter-spacing: .02em; text-shadow: 0 0 4px #2f7ff088; z-index: 1; }
+.g-lcd { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -54%); z-index: 1; font: 700 18cqw/1 "Orbitron", "Courier New", monospace; letter-spacing: .02em; white-space: nowrap; }
+.g-lcd span { display: block; text-align: right; }
+.g-ghost { color: #081a33; }
+.g-value { position: absolute; inset: 0; color: #4aa8ff; text-shadow: 0 0 6px #2f8bffcc, 0 0 14px #2f8bff66; }
+.g-label { position: absolute; left: 22%; top: 66%; z-index: 1; font: 600 7.5cqw/1.05 var(--body); color: #3d8fff; text-align: left; letter-spacing: .02em; }
+.g-warn { position: absolute; right: 18%; top: 63%; z-index: 1; font: 600 7cqw/1 var(--body); color: #3d8fff; text-align: center; }
+.g-lamp { display: block; width: 7cqw; height: 7cqw; margin: 3cqw auto 0; border-radius: 50%; background: #3a0b0b; box-shadow: inset 0 1px 1px #0008; }
+.g-lamp.on { background: radial-gradient(circle at 40% 35%, #ffb3a1, #ff2a14 55%, #a10e05); box-shadow: 0 0 6px #ff3a22, 0 0 12px #ff3a2288; animation: blink .5s steps(2) infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) { .g-lamp.on { animation: none; } }
+.legend { position: absolute; left: 0; right: 0; bottom: 3%; text-align: center; color: #7b8187; font-size: 11px; }
+.warn { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(92%, 520px); background: #fff; color: #222; border-radius: 14px; padding: 14px 16px; box-shadow: 0 10px 30px #0004; font-size: 14px; z-index: 5; }
+.warn b { color: #c22; }
+.warn button { margin-top: 8px; border: 0; border-radius: 8px; padding: 6px 14px; background: #222; color: #fff; font: inherit; }
+@media (orientation: portrait) { .pad { aspect-ratio: auto; height: min(96vh, 900px); width: min(100%, 460px); border-radius: 40px; }
+  .panel { left: 6%; right: 6%; top: 3%; height: 32%; }
+  #stickL { left: 8%; top: 40%; width: 40%; } #stickR { left: 55%; top: 70%; width: 34%; }
+  .dpad { left: 10%; top: 73%; width: 28%; } .face { right: 8%; top: 40%; width: 36%; }
+  .tbtn { top: 62%; width: 14%; } .status { top: 36.5%; width: 80%; } .gauge { top: 5%; width: 34%; } .small { top: 24%; grid-template-columns: repeat(2, auto); } .leds { top: 33%; } }
+</style>
+</head>
+<body>
+<div class="pad" id="pad">
+  <div class="panel"></div>
+  <div class="gauge" role="img" aria-label="มุมหันของหุ่น" id="gauge">
+    <div class="g-brand">SumoBench</div>
+    <div class="g-lcd"><span class="g-ghost">-888</span><span class="g-value" id="gValue">---</span></div>
+    <div class="g-label">YAW<br>ANGLE</div>
+    <div class="g-warn">EDGE<i class="g-lamp" id="gLamp"></i></div>
+  </div>
+  <div class="status" id="status" aria-live="polite">กด <b>เชื่อมต่อ</b> เพื่อจับคู่กับหุ่น SumoBench</div>
+  <div class="small">
+    <button id="bConnect">เชื่อมต่อ</button>
+    <button id="bSpeed">ความเร็ว</button>
+    <button id="bEdge" class="on" aria-label="กันตกขอบ">กันตก</button>
+    <button id="bFull">เต็มจอ</button>
+  </div>
+  <div class="leds" id="leds"><i></i><i></i><i></i><i></i></div>
+  <div class="stick" id="stickL" aria-label="จอยซ้าย เดินหน้า ถอย เลี้ยว"><div class="well"></div><div class="knob"></div></div>
+  <div class="stick" id="stickR" aria-label="จอยขวา หมุนอยู่กับที่"><div class="well"></div><div class="knob"></div></div>
+  <div class="dpad" id="dpad"><button data-d="up" aria-label="เดินหน้า"></button><button data-d="down" aria-label="ถอย"></button><button data-d="left" aria-label="หมุนซ้าย"></button><button data-d="right" aria-label="หมุนขวา"></button></div>
+  <div class="face" id="face">
+    <button data-k="X" aria-label="X หมุนกลับ 180 องศา">X</button>
+    <button data-k="Y" aria-label="Y ตั้งมุม 0">Y</button>
+    <button data-k="A" aria-label="A เร่งเต็มแรง">A</button>
+    <button data-k="B" aria-label="B เบรก">B</button>
+  </div>
+  <button class="tbtn" id="bStart" aria-label="T เริ่มแมตช์">T</button>
+  <div class="legend">จอยซ้าย ขับ · จอยขวา หมุน · A เร่ง · B เบรก · X กลับหลัง · Y ตั้งมุม 0 · T เริ่ม</div>
+</div>
+<script>
+'use strict';
+// Nordic UART style service: the robot listens on RX and reports on TX.
+const SERVICE = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+const TX = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+const $ = id => document.getElementById(id);
+const inSim = window.parent !== window;
+const enc = new TextEncoder();
+const SPEEDS = [0.25, 0.5, 0.75, 1];
+let speedIdx = 2, edgeAssist = true;
+let link = null;   // { send(text) } for Bluetooth or the simulator
+let rxChar = null, busy = false, queue = [];
+const input = { lx: 0, ly: 0, rx: 0, dpad: { up: 0, down: 0, left: 0, right: 0 }, boost: false, brake: false };
+
+function setStatus(html) { $('status').innerHTML = html; }
+function renderLeds() { [...$('leds').children].forEach((el, i) => el.classList.toggle('on', i <= speedIdx)); }
+renderLeds();
+
+if (inSim) $('bConnect').textContent = 'ต่อซิม';
+
+// ---- Bluetooth link ----
+async function writeNext() {
+  if (busy || !rxChar || !queue.length) return;
+  busy = true;
+  const text = queue.shift();
+  try {
+    if (rxChar.writeValueWithoutResponse) await rxChar.writeValueWithoutResponse(enc.encode(text));
+    else await rxChar.writeValue(enc.encode(text));
+  } catch (e) { /* a dropped packet is replaced by the next one */ }
+  busy = false;
+  writeNext();
+}
+function bleSend(text) {
+  // Keep only the newest drive command; key presses always go through.
+  if (text.startsWith('M,')) queue = queue.filter(t => !t.startsWith('M,'));
+  queue.push(text);
+  writeNext();
+}
+// The robot ignores every command until the phone sends the right PIN, and drops it after 5 s otherwise.
+const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* storage blocked */ } } };
+let pin = store.get('sumoPadPin') || '1234', authTimer = 0, pinRejected = false;
+function askPin() {
+  const box = document.createElement('div');
+  box.className = 'warn';
+  box.innerHTML = `<b style="color:#222">รหัสเชื่อมต่อหุ่น</b><br><input id="pinInput" type="password" inputmode="text" autocomplete="off" maxlength="12" value="${pin.replace(/"/g, '')}" style="margin-top:8px;width:100%;font:inherit;padding:8px;border:1px solid #bbb;border-radius:8px"><br><button type="button" id="pinGo">เชื่อมต่อ</button> <button type="button" id="pinCancel" style="background:#888">ยกเลิก</button>`;
+  $('pad').appendChild(box);
+  box.querySelector('#pinCancel').onclick = () => box.remove();
+  box.querySelector('#pinGo').onclick = () => {
+    pin = box.querySelector('#pinInput').value.trim();
+    store.set('sumoPadPin', pin);
+    box.remove();
+    connectBle();
+  };
+}
+
+async function connectBle() {
+  if (!navigator.bluetooth) {
+    showWarn('<b>เบราว์เซอร์นี้ใช้ Bluetooth ไม่ได้</b><br>ใช้ Chrome บน Android หรือคอมพิวเตอร์ ส่วน iPhone ใช้แอป Bluefy และต้องเปิดหน้านี้จากเว็บ https หรือ localhost');
+    return;
+  }
+  try {
+    setStatus('กำลังค้นหาหุ่น...');
+    const device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'SumoBench' }], optionalServices: [SERVICE] });
+    device.addEventListener('gattserverdisconnected', () => { link = null; rxChar = null; document.body.classList.remove('connected'); $('bConnect').textContent = 'เชื่อมต่อ'; if (!pinRejected) setStatus('หลุดการเชื่อมต่อ กดเชื่อมต่อใหม่'); });
+    const server = await device.gatt.connect();
+    const service = await server.getPrimaryService(SERVICE);
+    rxChar = await service.getCharacteristic(RX);
+    const tx = await service.getCharacteristic(TX);
+    await tx.startNotifications();
+    tx.addEventListener('characteristicvaluechanged', e => onStatus(new TextDecoder().decode(e.target.value)));
+    link = { send: bleSend, close: () => device.gatt.disconnect() };
+    $('bConnect').textContent = 'ตัด';
+    setStatus(`ต่อ <b>${device.name}</b> แล้ว กำลังตรวจรหัส...`);
+    queue = [];
+    pinRejected = false;
+    link.send(`P,${pin}`);
+    clearTimeout(authTimer);
+    authTimer = setTimeout(() => setStatus('หุ่นไม่ตอบรหัส อาจยังใช้โค้ดรุ่นก่อน ให้อัปโหลดโค้ด "บังคับด้วยมือถือ" ใหม่'), 3000);
+  } catch (e) {
+    setStatus(e.name === 'NotFoundError' ? 'ยังไม่ได้เลือกหุ่น' : `เชื่อมต่อไม่สำเร็จ: ${e.message}`);
+  }
+}
+
+// ---- Simulator link (when opened inside Sumo Bench) ----
+function connectSim() {
+  link = { send: text => window.parent.postMessage({ type: 'sumo-pad', text }, '*'), close: () => window.parent.postMessage({ type: 'sumo-pad', text: 'BYE' }, '*') };
+  document.body.classList.add('connected');
+  $('bConnect').textContent = 'ตัด';
+  setStatus('ต่อหุ่นในซิมแล้ว กด <b>T</b> เพื่อเริ่มแมตช์');
+}
+window.addEventListener('message', e => { if (e.data?.type === 'sumo-status') onStatus(e.data.text); });
+
+// Robot reports "S,yaw,edge,started".
+function onStatus(text) {
+  const [tag, yaw, edge, started] = text.trim().split(',');
+  if (tag === 'A') {
+    clearTimeout(authTimer);
+    if (yaw === '1') {
+      document.body.classList.add('connected');
+      setStatus('รหัสถูกต้อง กด <b>T</b> เพื่อเริ่มแมตช์');
+      link?.send(edgeAssist ? 'K,E1' : 'K,E0');
+    } else {
+      pinRejected = true;
+      setStatus('<b>รหัสไม่ถูกต้อง</b> หุ่นตัดการเชื่อมต่อแล้ว กดเชื่อมต่อแล้วใส่รหัสใหม่');
+    }
+    return;
+  }
+  if (tag !== 'S') return;
+  const side = { '0': 'ไม่เห็นขอบ', '-1': 'ขอบซ้าย', '1': 'ขอบขวา', '2': 'ขอบหน้า' }[edge] ?? '';
+  const deg = Math.max(-999, Math.min(999, Math.round(+yaw)));
+  $('gValue').textContent = Number.isFinite(deg) ? String(deg) : '---';
+  $('gLamp').classList.toggle('on', edge !== '0');
+  $('gauge').setAttribute('aria-label', `มุมหัน ${deg} องศา${edge !== '0' ? ' เห็นขอบสนาม' : ''}`);
+  setStatus(`${started === '1' ? '<b>กำลังแข่ง</b>' : 'รอเริ่ม กด <b>T</b>'} · ${side}`);
+}
+
+function showWarn(html) {
+  const box = document.createElement('div');
+  box.className = 'warn';
+  box.innerHTML = `${html}<br><button type="button">ปิด</button>`;
+  box.querySelector('button').onclick = () => box.remove();
+  $('pad').appendChild(box);
+}
+
+hold($('bConnect'), () => {
+  if (link) { link.send('M,0,0,1'); link.close?.(); link = null; document.body.classList.remove('connected'); $('bConnect').textContent = inSim ? 'ต่อซิม' : 'เชื่อมต่อ'; setStatus('ตัดการเชื่อมต่อแล้ว'); return; }
+  if (inSim) connectSim(); else askPin();
+});
+hold($('bSpeed'), () => { speedIdx = (speedIdx + 1) % SPEEDS.length; renderLeds(); });
+hold($('bEdge'), () => { edgeAssist = !edgeAssist; $('bEdge').classList.toggle('on', edgeAssist); link?.send(edgeAssist ? 'K,E1' : 'K,E0'); });
+$('bFull').addEventListener('click', async () => {
+  try { await document.documentElement.requestFullscreen(); await screen.orientation?.lock?.('landscape'); } catch (e) { /* not every phone allows it */ }
+});
+
+// ---- Joysticks ----
+function joystick(el, onMove) {
+  const knob = el.querySelector('.knob');
+  let id = null;
+  const move = e => {
+    const r = el.getBoundingClientRect();
+    const max = r.width * 0.32;
+    let dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+    const d = Math.hypot(dx, dy);
+    if (d > max) { dx *= max / d; dy *= max / d; }
+    knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    onMove(dx / max, -dy / max);
+  };
+  el.addEventListener('pointerdown', e => { id = e.pointerId; try { el.setPointerCapture(id); } catch (err) { /* capture is optional */ } move(e); });
+  el.addEventListener('pointermove', e => { if (e.pointerId === id) move(e); });
+  const end = e => { if (e.pointerId !== id) return; id = null; knob.style.transform = ''; onMove(0, 0); };
+  el.addEventListener('pointerup', end);
+  el.addEventListener('pointercancel', end);
+}
+joystick($('stickL'), (x, y) => { input.lx = x; input.ly = y; });
+joystick($('stickR'), x => { input.rx = x; });
+
+function hold(el, on, off) {
+  let pressed = false;
+  const down = e => {
+    if (e.cancelable) e.preventDefault();
+    if (pressed) return;
+    pressed = true;
+    el.classList.add('down');
+    on();
+    try { navigator.vibrate?.(12); } catch (err) { /* iOS has no vibration */ }
+  };
+  const up = e => {
+    if (e && e.cancelable) e.preventDefault();
+    if (!pressed) return;
+    pressed = false;
+    el.classList.remove('down');
+    off?.();
+  };
+  // Touch arrives through the page-level dispatcher below; mouse and pen come straight here.
+  el.addEventListener('padpress', down);
+  el.addEventListener('padrelease', up);
+  el.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch') return;
+    down(e);
+    try { el.setPointerCapture(e.pointerId); } catch (err) { /* capture is optional */ }
+  });
+  el.addEventListener('pointerup', e => { if (e.pointerType !== 'touch') up(e); });
+  el.addEventListener('pointercancel', e => { if (e.pointerType !== 'touch') up(e); });
+}
+// iOS web views can deliver taps to the wrong element after the phone rotates, so the page
+// takes every touch itself and finds the button under the finger from its coordinates.
+const BUTTONS = '.face button, .dpad button, #bStart, .small button';
+const fingers = new Map();
+const debug = /[?&]debug/.test(location.search);
+function buttonAt(x, y) {
+  const hit = document.elementFromPoint(x, y);
+  if (hit?.closest('.stick')) return null;          // joysticks track their own pointer
+  const direct = hit?.closest(BUTTONS);
+  if (direct) return direct;
+  let best = null, bestD = 24;                      // forgive a near miss by up to 24 px
+  for (const b of document.querySelectorAll(BUTTONS)) {
+    const r = b.getBoundingClientRect();
+    const d = Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+    if (d < bestD) { bestD = d; best = b; }
+  }
+  return best;
+}
+function showDot(t, label) {
+  if (!debug) return;
+  const dot = document.createElement('div');
+  dot.className = 'touch-dot';
+  dot.style.left = t.clientX + 'px';
+  dot.style.top = t.clientY + 'px';
+  dot.textContent = label;
+  document.body.appendChild(dot);
+  setTimeout(() => dot.remove(), 900);
+}
+document.addEventListener('touchstart', e => {
+  if (e.target.closest?.('.warn')) return;          // the PIN box behaves like a normal form
+  if (!e.target.closest?.('.stick') && e.cancelable) e.preventDefault();
+  for (const t of e.changedTouches) {
+    const b = buttonAt(t.clientX, t.clientY);
+    showDot(t, b ? (b.dataset.k || b.dataset.d || b.textContent.trim().slice(0, 4)) : '·');
+    if (!b) continue;
+    fingers.set(t.identifier, b);
+    b.dispatchEvent(new Event('padpress'));
+  }
+}, { passive: false });
+const release = e => {
+  for (const t of e.changedTouches) {
+    const b = fingers.get(t.identifier);
+    if (!b) continue;
+    fingers.delete(t.identifier);
+    b.dispatchEvent(new Event('padrelease'));
+  }
+};
+document.addEventListener('touchend', release);
+document.addEventListener('touchcancel', release);
+// Rotation can leave the page zoomed or scrolled; put it back so taps line up again.
+const settle = () => { window.scrollTo(0, 0); document.documentElement.style.height = window.innerHeight + 'px'; };
+window.addEventListener('orientationchange', () => setTimeout(settle, 250));
+window.addEventListener('resize', settle);
+settle();
+// Long presses must not open the iOS text menu or start a selection anywhere on the pad.
+['contextmenu', 'selectstart', 'gesturestart'].forEach(t => document.addEventListener(t, e => { if (!(e.target instanceof HTMLInputElement)) e.preventDefault(); }));
+document.querySelectorAll('.dpad button').forEach(b => hold(b, () => { input.dpad[b.dataset.d] = 1; }, () => { input.dpad[b.dataset.d] = 0; }));
+document.querySelectorAll('.face button').forEach(b => {
+  const k = b.dataset.k;
+  if (k === 'A') hold(b, () => { input.boost = true; }, () => { input.boost = false; });
+  else if (k === 'B') hold(b, () => { input.brake = true; }, () => { input.brake = false; });
+  else hold(b, () => link?.send(`K,${k}`));
+});
+hold($('bStart'), () => link?.send('K,T'));
+
+// ---- Drive mix: arcade on the left stick, spin on the right stick or the D-pad ----
+let lastSent = '', lastAt = 0;
+setInterval(() => {
+  if (!link) return;
+  const d = input.dpad;
+  let fwd = input.ly, turn = input.lx * 0.75 + input.rx;
+  if (!fwd && !turn) { fwd = d.up - d.down; turn = d.right - d.left; }
+  const scale = input.boost ? 255 : 255 * SPEEDS[speedIdx];
+  const clamp = v => Math.max(-1, Math.min(1, v));
+  const l = Math.round(clamp(fwd + turn) * scale), r = Math.round(clamp(fwd - turn) * scale);
+  const text = `M,${l},${r},${input.brake ? 1 : 0}`;
+  const now = performance.now();
+  // Resend at least every 200 ms so the robot's failsafe knows the phone is still there.
+  if (text !== lastSent || now - lastAt > 200) { link.send(text); lastSent = text; lastAt = now; }
+}, 50);
+</script>
+</body>
+</html>
